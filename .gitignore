@@ -218,9 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-# ==========================================
+
 # Windows & OS Artifacts
-# ==========================================
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
@@ -230,9 +229,7 @@ ehthumbs_vista.db
 $RECYCLE.BIN/
 *.lnk
 
-# ==========================================
 # VS Code Local Workspace Settings
-# ==========================================
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -240,17 +237,13 @@ $RECYCLE.BIN/
 !.vscode/extensions.json
 *.code-workspace
 
-# ==========================================
 # Milestone Submission Zips & Archives
-# ==========================================
-# Prevents accidental commits of your submission zip archives
+# Prevents accidental commits of submission zip archives
 *.zip
 *.tar.gz
 *.7z
 
-# ==========================================
 # Course & Project Artifacts
-# ==========================================
 # Saved plots, evaluation figures, and demo logs
 results/*.png
 results/*.jpg
