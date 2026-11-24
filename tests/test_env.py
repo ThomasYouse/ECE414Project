@@ -1,5 +1,9 @@
+import os
+import tempfile
 import unittest
+import numpy as np
 from src.environment import NetDefendEnv
+from src.agents import TabularQLearningAgent, TabularSARSAAgent
 
 
 class TestNetDefendEnv(unittest.TestCase):
@@ -23,6 +27,8 @@ class TestNetDefendEnv(unittest.TestCase):
         self.assertEqual(self.env.current_step, 0)
         self.assertEqual(len(self.env.active_honeypots), 0)
         self.assertEqual(info["honeypot_load"], 0)
+        self.assertIn("is_malicious", info)
+        self.assertIn("was_malicious", info)
         self.assertTrue(0 <= state_idx < 96)
 
     def test_action_bounds(self):
@@ -40,13 +46,13 @@ class TestNetDefendEnv(unittest.TestCase):
 
         overflow_detected = False
         for _ in range(20):
-            _, reward, _, info = small_env.step(action=1)  # Force HONEYPOT action
+            _, reward, _, info = small_env.step(action=1)
             if info["overflow"]:
                 overflow_detected = True
                 self.assertIn(reward, [-10.0, -120.0])
                 break
 
-        self.assertTrue(overflow_detected, "Buffer overflow condition should trigger under persistent decoy allocation.")
+        self.assertTrue(overflow_detected, "Buffer overflow should trigger under persistent decoy allocation.")
 
     def test_episode_termination(self):
         """Verify episode strictly terminates at max_steps."""
@@ -58,6 +64,34 @@ class TestNetDefendEnv(unittest.TestCase):
             steps += 1
         self.assertEqual(steps, 200)
         self.assertTrue(done)
+
+    def test_aggressive_ood_mode(self):
+        """Verify out-of-distribution aggressive attacker mode initializes valid stochastic matrix."""
+        ood_env = NetDefendEnv(honeypot_capacity=5, attack_mode="aggressive", seed=7)
+        row_sums = ood_env.p_att.sum(axis=1)
+        self.assertTrue(np.allclose(row_sums, np.ones(3)))
+        with self.assertRaises(ValueError):
+            NetDefendEnv(attack_mode="invalid_mode")
+
+    def test_agent_update_and_persistence(self):
+        """Verify Q-Learning and SARSA updates modify Q-tables and save/load cleanly."""
+        q_agent = TabularQLearningAgent(seed=1)
+        sarsa_agent = TabularSARSAAgent(seed=1)
+
+        q_before = q_agent.Q[0, 1]
+        q_agent.update(0, 1, 40.0, 5, False)
+        self.assertNotEqual(q_agent.Q[0, 1], q_before)
+
+        sarsa_before = sarsa_agent.Q[0, 1]
+        sarsa_agent.update(0, 1, 40.0, 5, 0, False)
+        self.assertNotEqual(sarsa_agent.Q[0, 1], sarsa_before)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "test_q.npy")
+            sarsa_agent.save(path)
+            loaded = TabularSARSAAgent()
+            loaded.load(path)
+            self.assertTrue(np.array_equal(sarsa_agent.Q, loaded.Q))
 
 
 if __name__ == "__main__":
